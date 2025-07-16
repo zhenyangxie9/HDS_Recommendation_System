@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <title>Health Data Science Course Recommender</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+  <style>
+    :root {
+      --primary: #6f42c1;
+      --primary-light: #a684e2;
+      --primary-rgb: 111, 66, 193;
+      --bs-body-font-family: 'Inter', sans-serif;
+      --bs-body-bg: #f8f9fa;
+      --bs-body-color: #212529;
+      --bs-border-color: #dee2e6;
+      --card-bg: #ffffff;
+    }
+    [data-bs-theme="dark"] {
+      --bs-body-bg: #1a1a2e;
+      --bs-body-color: #e0e1dd;
+      --bs-border-color: #2a2a4a;
+      --card-bg: #16213e;
+      --bs-secondary-bg: #2a2a4a;
+    }
+    body {
+      background-color: var(--bs-body-bg);
+      color: var(--bs-body-color);
+      padding-top: 70px;
+    }
+    .navbar {
+      background-color: var(--card-bg) !important;
+      border-bottom: 1px solid var(--bs-border-color);
+      transition: box-shadow 0.3s ease;
+    }
+    .navbar-brand {
+        font-family: 'Playfair Display', serif;
+        font-weight: 700;
+        color: var(--primary) !important;
+    }
+    .nav-pills .nav-link {
+        font-weight: 500;
+        border-radius: 50px;
+        padding: 0.5rem 1rem;
+        color: var(--bs-body-color);
+    }
+    .nav-pills .nav-link.active {
+        color: #fff;
+        background-color: var(--primary);
+    }
+    .btn {
+      transition: all 0.2s ease-in-out;
+    }
+    .btn:active {
+        transform: scale(0.97);
+    }
+    .btn-recommend {
+      background: linear-gradient(45deg, var(--primary), var(--primary-light));
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: .75rem 2rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .btn-recommend-outline {
+      background: transparent;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+      border-radius: 50px;
+      padding: .75rem 2rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    .btn-recommend-outline:hover {
+      background: var(--primary);
+      color: #fff;
+    }
+    .card {
+      background: var(--card-bg);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      border-radius: 12px;
+      border: 1px solid var(--bs-border-color);
+    }
+    .card.interactive {
+        cursor: pointer;
+        transition: all 0.3s ease-in-out;
+    }
+    .card.interactive:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+    }
+    [data-bs-theme="dark"] .card.interactive:hover {
+        box-shadow: 0 12px 24px rgba(0,0,0,0.2);
+    }
+    .card.interactive:active {
+        transform: translateY(-1px) scale(0.98);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.06);
+        transition-duration: 0.1s;
+    }
+    #welcome-panel {
+      text-align: center;
+      padding: 3rem 1rem;
+    }
+    #welcome-panel h1 {
+      font-family: 'Playfair Display', serif;
+      color: var(--primary);
+      font-size: 2.5rem;
+    }
+    #preference-options {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 1.5rem; 
+        margin: 2.5rem auto; 
+        max-width: 900px;
+    }
+    .preference-label {
+      cursor: pointer;
+      width: 150px; 
+      height: 150px;
+      border: 2px solid var(--bs-border-color);
+      border-radius: 50%; 
+      display: flex;
+      flex-direction: column; 
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 0.9rem;
+      font-weight: 500;
+      background-color: var(--card-bg);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      transition: all 0.2s ease-in-out;
+    }
+    .preference-label i {
+        font-size: 1.75rem; 
+        margin-bottom: 0.5rem;
+        color: var(--primary);
+        transition: all 0.2s ease-in-out;
+    }
+    .preference-label:hover {
+        transform: scale(1.1);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+    [data-bs-theme="dark"] .preference-label:hover {
+        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+    .preference-checkbox:checked + .preference-label {
+      background-color: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+      transform: scale(1.05);
+    }
+    .preference-checkbox:checked + .preference-label i {
+        color: #fff;
+    }
+    .preference-checkbox {
+      display: none;
+    }
+    #recommender-content {
+        display: none;
+    }
+    #selected-courses .list-group-item {
+        transition: opacity 0.3s ease-out;
+        background-color: transparent;
+        border-color: var(--bs-border-color);
+    }
+    #recommend-cards .col {
+        transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+    }
+    .dataTables_wrapper {
+        background: var(--card-bg);
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid var(--bs-border-color);
+    }
+    #grading-table thead th {
+        background-color: var(--primary);
+        color: white;
+    }
+    .dataTables_wrapper .dataTables_filter input,
+    .dataTables_wrapper .dataTables_length select {
+        border-radius: 50px !important;
+        padding: .375rem 1rem;
+        border-color: var(--bs-border-color);
+        background-color: var(--bs-body-bg);
+        color: var(--bs-body-color);
+    }
+    .table-hover tbody tr:hover {
+        background-color: rgba(var(--primary-rgb), 0.05) !important;
+    }
+    [data-bs-theme="dark"] .table-hover tbody tr:hover {
+        background-color: rgba(var(--primary-rgb), 0.15) !important;
+    }
+    [data-bs-theme="dark"] .bg-white {
+        background-color: var(--card-bg) !important;
+    }
+    [data-bs-theme="dark"] .bg-light {
+        background-color: var(--bs-body-bg) !important;
+    }
+    [data-bs-theme="dark"] .form-select {
+        background-color: var(--bs-body-bg);
+        color: var(--bs-body-color);
+        border-color: var(--bs-border-color);
+    }
+    [data-bs-theme="dark"] .modal-content {
+        background-color: var(--card-bg);
+    }
+  </style>
+
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+</head>
+<body>
+
+  <nav class="navbar fixed-top navbar-expand-lg shadow-sm">
+    <div class="container">
+      <a class="navbar-brand fs-4" href="#">
+        <img src="{{ logo_url }}" height="40" class="me-2" alt="Logo">
+        HDS Recommender
+      </a>
+      <div class="ms-auto d-flex align-items-center">
+        <ul class="nav nav-pills me-3" id="main-nav">
+            <li class="nav-item"><a href="#recommender-pane" class="nav-link active" data-bs-toggle="pill">Recommender</a></li>
+            <li class="nav-item"><a href="#catalog-pane" class="nav-link" data-bs-toggle="pill">Catalog</a></li>
+            <li class="nav-item"><a href="#stats-pane" class="nav-link" data-bs-toggle="pill">Stats</a></li>
+        </ul>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="darkModeToggle">
+            <label class="form-check-label" for="darkModeToggle"><i class="bi bi-moon-stars-fill"></i></label>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container mt-5 tab-content">
+    <div class="tab-pane fade show active" id="recommender-pane">
+        <div id="welcome-panel" data-aos="fade-up">
+            <h1 class="display-4">Health Data Science Course Recommender</h1>
+            <p class="lead text-muted">Tell us what you're passionate about, or start with the most popular courses.</p>
+            <div id="preference-options">
+                <div><input class="preference-checkbox" type="checkbox" value="programming" id="pref-programming"><label class="preference-label" for="pref-programming"><i class="bi bi-code-slash"></i><span>Programming &<br>Algorithms</span></label></div>
+                <div><input class="preference-checkbox" type="checkbox" value="stats" id="pref-stats"><label class="preference-label" for="pref-stats"><i class="bi bi-graph-up"></i><span>Statistics &<br>Modeling</span></label></div>
+                <div><input class="preference-checkbox" type="checkbox" value="biology" id="pref-biology"><label class="preference-label" for="pref-biology"><i class="bi bi-heart-pulse"></i><span>Biology &<br>Medicine</span></label></div>
+                <div><input class="preference-checkbox" type="checkbox" value="imaging" id="pref-imaging"><label class="preference-label" for="pref-imaging"><i class="bi bi-images"></i><span>Imaging &<br>Signals</span></label></div>
+                <div><input class="preference-checkbox" type="checkbox" value="systems" id="pref-systems"><label class="preference-label" for="pref-systems"><i class="bi bi-hdd-stack"></i><span>Healthcare<br>Systems</span></label></div>
+            </div>
+            <div>
+                <button id="find-courses-btn" class="btn-recommend me-2">Find My Courses</button>
+                <button id="show-popular-btn" class="btn-recommend-outline">Just Show Popular</button>
+            </div>
+        </div>
+
+        <div id="recommender-content">
+            <div class="row g-4 mb-5">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Your Selected Courses:</label>
+                    <div id="selected-courses-container" class="bg-white p-3 rounded border" style="min-height: 130px;">
+                        <ul id="selected-courses" class="list-group list-group-flush"></ul>
+                    </div>
+                    <button id="reset-btn" class="btn btn-outline-danger btn-sm mt-2">Reset Selection</button>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Recommendation Strategy:</label>
+                    <select id="mode-select" class="form-select mb-3">
+                        <option value="hybrid" selected>Hybrid (Default)</option>
+                        <option value="support">Popularity</option>
+                        <option value="ar">Association Rules (AR)</option>
+                        <option value="cf">Collaborative Filtering (CF)</option>
+                    </select>
+                    <label class="form-label fw-bold">Add Course Manually:</label>
+                    <div class="input-group">
+                        <select id="course-dropdown" class="form-select">
+                            <option disabled selected>— Select a course —</option>
+                            {% for code, title in course_meta_dict.items() %}
+                            <option value="{{ code }}">{{ code }} — {{ title }}</option>
+                            {% endfor %}
+                        </select>
+                        <button id="add-course-btn" class="btn btn-primary">Add</button>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-lg-8">
+                    <h4 class="mb-2">Recommended For You</h4>
+                    <p class="text-muted small">Click on a card to add it to your selection.</p>
+                    <div class="row row-cols-1 row-cols-md-2 g-4" id="recommend-cards"></div>
+                </div>
+                <div class="col-lg-4">
+                    <h4 class="mb-2">Career & Research Guidance</h4>
+                    <div id="career-guidance-panel" class="p-3 bg-light rounded" style="min-height: 200px; transition: all 0.3s ease;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="tab-pane fade" id="catalog-pane">
+        <h2 class="mb-3">Full Course Catalog & Ratings</h2>
+        <div class="table-responsive">
+            <table id="grading-table" class="table table-hover align-middle" style="width:100%">
+                 <thead><tr><th>Title</th><th>Code</th><th>Exam</th><th>Avg. Rating</th><th>Avg. Satisfaction</th></tr></thead>
+                 <tbody>
+                  {% for row in grading_forms %}
+                  <tr>
+                    <td><a class="course-link" data-code="{{ row.Code }}">{{ row.Title }}</a></td>
+                    <td>{{ row.Code }}{% if row.Code in new_courses %}<span class="badge bg-warning text-dark ms-1">NEW*</span>{% endif %}</td>
+                    <td>{{ row.Exam or 'N/A' }}</td>
+                    <td>{{ row['Average Rating'] or 'N/A' }}</td>
+                    <td>{{ row['Average Satisfaction'] or 'N/A' }}</td>
+                  </tr>
+                  {% endfor %}
+                 </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="tab-pane fade" id="stats-pane">
+        <h2 class="mb-3">Enrollment Statistics by Year</h2>
+        <div class="card">
+            <div class="card-body">
+                <div class="mb-3 text-center">
+                  <label class="form-label me-2">Compare Years:</label>
+                  <div id="year-checkboxes" class="d-inline-block"></div>
+                </div>
+                <div class="mb-4" style="height: 60vh;">
+                  <canvas id="year-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+  </main>
+
+  <div class="modal fade" id="courseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header" style="background:var(--primary); color:#fff;"><h5 class="modal-title" id="courseModalLabel"></h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    const newCourses = {{ new_courses|tojson|safe }};
+    const courseDetails = {
+      "IIDS69052": {"title": "IIDS69052 – Digital Epidemiology", "sections": [{"heading": "Short description", "content": "Explores the use of digital data sources—social media, search engines, mobile apps, wearables, EHRs—for real-time public-health surveillance, biomarker discovery, and intervention design."}, {"heading": "Credits & study load", "list": ["15 credits", "Semester 2", "≈150 hours independent study"]}, {"heading": "Prerequisites", "content": "No formal prerequisites; basic statistics and data-processing skills recommended."}, {"heading": "Delivery format", "list": ["In-person lectures", "E-learning reading materials", "Group-based assignment", "Individual assignment"]}, {"heading": "Assessment", "list": ["Group project presentation (10 min + 5 min Q&A): 40%", "Individual written report (400-word scientific abstract + 300-word lay abstract): 60%"]}, {"heading": "Key learning outcomes", "list": ["Identify and integrate diverse digital data sources for epidemiological research", "Compare strengths, limitations, and biases of digital vs. traditional epidemiology", "Apply data-cleaning, validation, and large-scale analytics techniques", "Evaluate ethical, legal, and privacy considerations in digital-health data use"]}, {"heading": "Recommended reading", "content": "Walker, M. (2022). Digital Epidemiology: An Introduction to Disease Surveillance Using Digital Data."}, {"heading": "Teaching staff", "content": "Ian Hall · William Dixon · Victoria Palin"}]},
+      "IIDS60542": {"title": "IIDS60542 – Introduction to Health Informatics", "sections": [{"heading": "Short description", "content": "An overview of electronic patient records (EPRs), clinical coding schemes (Read codes, SNOMED), and interoperability standards (HL7), together with the human-factors, governance, and usability challenges in e-health systems."}, {"heading": "Credits & study load", "list": ["15 credits", "Semester 2", "≈130 hours independent study", "10 h lectures + 10 h practicals/workshops"]}, {"heading": "Prerequisites", "content": "Principles of Digital Biology (COMP60532)"}, {"heading": "Delivery format", "list": ["In-person lectures", "Practical classes & workshops", "Group discussions", "Independent reading"]}, {"heading": "Assessment", "list": ["Individual written assignment (essay): 100%"]}, {"heading": "Key learning outcomes", "list": ["Understand the development, structure, and challenges of EPRs, including data governance and confidentiality.", "Critically evaluate coding schemes (Read codes, SNOMED) and their maintenance.", "Explain interoperability concepts and messaging standards (e.g. HL7).", "Analyse human-factors and usability issues in e-health implementations.", "Apply qualitative methods to assess organisational change in healthcare settings."]}, {"heading": "Transferable skills", "list": ["Interdisciplinary teamwork", "Project management", "Problem solving", "Academic writing & reflection"]}, {"heading": "Teaching staff", "content": "Helen Hulme (Unit coordinator)"}]},
+      "IIDS61402": {"title": "IIDS61402 – Decision Support Systems", "sections": [{"heading": "Short description", "content": "Focuses on the representation and use of patient data and clinical knowledge in computational approaches to support healthcare decision making, covering design, evaluation, and integration challenges of clinical decision support (CDS) systems."}, {"heading": "Credits & study load", "list": ["15 credits", "Semester 2", "≈150 hours independent study"]}, {"heading": "Prerequisites", "content": "None specified; recommended background in healthcare data concepts or basic programming."}, {"heading": "Delivery format", "list": ["E-learning preparatory materials", "Face-to-face lectures & open discussions", "Problem-based group workshops (1 × 3-day block)", "Case-study analyses"]}, {"heading": "Assessment", "list": ["Group presentation: 20%", "Computer practical: 20%", "Individual report: 60%"]}, {"heading": "Key learning outcomes", "list": ["Theories of clinical decision making (statistical, psychological, shared decision making)", "Types of CDS (alerts, reminders, computerized guidelines) and their pros/cons", "Methods for knowledge acquisition and modelling", "Application of CDS at patient and population levels", "Design considerations and performance evaluation of CDS"]}, {"heading": "Teaching staff", "content": "Niels Peek (Unit coordinator)"}]},
+      "IIDS67302": {"title": "IIDS67302 – Introduction to Clinical Bioinformatics", "sections": [{"heading": "Short description", "content": "Covers the fundamentals of human genomics and bioinformatics in a clinical context, from DNA→RNA→protein biology through next-generation sequencing workflows, variant interpretation, and the ethical/governance framework for genomic data."}, {"heading": "Credits & study load", "list": ["15 credits", "Semester 2 (6 weeks)", "≈25 h/week (10 h video lectures & readings, 3 h workshops, 2 h discussion forums, 5 h summative case work, 5 h private study)"]}, {"heading": "Prerequisites", "content": "None specified; basic molecular biology or introductory genomics recommended."}, {"heading": "Delivery format", "list": ["Online video lectures & readings (Articulate Rise)", "Weekly hands-on workshops (clinical case studies in eLab)", "Discussion forums with tutor-facilitated peer learning", "Summative case-study analysis"]}, {"heading": "Assessment", "list": ["Individual recorded presentation (10 min, clinical variant analysis): 100%"]}, {"heading": "Key learning outcomes", "list": ["Explain DNA/RNA/protein structure & function, genomic variation, and sequencing technologies.", "Navigate primary sequence databases (GenBank, UniProt) and genome browsers (Ensembl, UCSC).", "Apply alignment algorithms (BLAST, Smith–Waterman) and variant annotation tools.", "Integrate bioinformatic resources (variant/phenotype databases, predictive tools) to interpret patient variants.", "Demonstrate workflows for SNV/indel/CNV analysis and report generation.", "Critically discuss data protection, consent, and incidental findings in clinical genomics.", "Communicate complex genomic results clearly in oral and written formats.", "Work independently to analyse clinical case data and reflect on methodology."]}, {"heading": "Recommended reading", "list": ["Strachan, T. & Read, A. (2021). Human Molecular Genetics (Garland Science).", "Walker, M. (2022). Digital Epidemiology (for comparative methodology).", "Key papers on variant interpretation standards (e.g. Richards et al., 2015)."]}, {"heading": "Teaching staff", "content": "Andrew Devereau · Angela Davies"}]},
+      "IIDS67462": {"title": "IIDS67462 – Mathematical Computing for Medical Imaging", "sections": [{"heading": "Short description", "content": "Introduces mathematical and computational methods—optimization, statistical shape modelling, classification/regression, and neural networks—and their implementation in Python for quantitative analysis of medical images."}, {"heading": "Credits & study load", "list": ["15 credits", "Semester 2", "≈150 h independent study", "12 × 3 h blended sessions (lectures + problem-solving + in-class programming)"]}, {"heading": "Prerequisites", "content": "Basic linear algebra (matrices & vectors) and calculus (derivatives); online refresher materials provided."}, {"heading": "Delivery format", "list": ["In-person lectures & live coding/practicals", "Problem-solving exercises at end of each session", "All materials via Blackboard"]}, {"heading": "Assessment", "list": ["Two Python programming assignments (20% each; total 40%)", "Written exam (60%)"]}, {"heading": "Key learning outcomes", "list": ["Understand core mathematical techniques for image optimisation, modelling, classification, and analysis.", "Select and apply appropriate Python libraries to implement these algorithms.", "Critically evaluate algorithm performance and interpret results.", "Develop practical Python coding skills to build image-analysis pipelines.", "Communicate quantitative findings effectively in writing."]}, {"heading": "Teaching staff", "content": "Timothy Cootes (Unit coordinator)"}]},
+      "IIDS67482": {"title": "IIDS67482 – Medical Image Analysis and Artificial Intelligence", "sections": [{"heading": "Short description", "content": "Covers core image-processing techniques (filtering, segmentation, registration) and deep-learning methods (CNNs, representation learning) for medical imaging applications, with hands-on Python exercises."}, {"heading": "Credits & study load", "list": ["15 credits", "Semester 2", "≈150 h independent study", "12 × 90 min lectures + 60 min practical per week"]}, {"heading": "Prerequisites", "content": "Basic Python proficiency; familiarity with linear algebra and calculus recommended."}, {"heading": "Delivery format", "list": ["In-person lectures & discussions", "Weekly practical sessions", "Online reading lists & tutorials on Blackboard"]}, {"heading": "Assessment", "list": ["Written exam (2.5 h): 70%", "Written assignment (2,000 words): 30%"]}, {"heading": "Key learning outcomes", "list": ["Image processing fundamentals: noise models, filtering, region analysis", "Object detection, segmentation, and evaluation metrics", "Image registration: rigid, affine, and deformable methods", "Deep-learning basics and CNN architectures for medical images"]}, {"heading": "Teaching staff", "content": "Arezoo Zakeri (Unit coordinator)"}]},
+      "IIDS67612": {"title": "IIDS67612 – Tutorials in Advanced Statistics", "sections": [{"heading": "Short description", "content": "A literature-driven module exploring advanced statistical methods—such as machine learning in clinical prediction, meta-analysis, and longitudinal data analysis—through critical reading, discussion, and debate led by active researchers."}, {"heading": "Credits & study load", "list": ["15 credits", "Semester 2", "≈116 h independent study", "4 h lectures + 30 h workshops"]}, {"heading": "Prerequisites", "content": "Foundational statistical content from Semester 1 modules."}, {"heading": "Delivery format", "list": ["Twice-weekly face-to-face sessions for topic introduction and debate", "Literature-based individual and group tasks", "Online capture of sessions and tutor support via Blackboard and office hours", "Interactive tools (e.g. Google Jamboard) for inclusive participation"]}, {"heading": "Assessment", "list": ["Individual coursework report (3,000–4,500 words, critical appraisal of research literature): 100%"]}, {"heading": "Teaching staff", "content": "Jamie Christopher Sergeant (Unit coordinator)"}]},
+      "IIDS67682": {"title": "IIDS67682 – Machine Learning and Advanced Data Methods", "sections": [{"heading": "Short description", "content": "Covers the application of machine learning and advanced computational approaches to high-throughput biological experiments and patient-level health data, with hands-on Python pipelines."}, {"heading": "Credits & study load", "list": ["15 credits", "Semester 2 (6 days of face-to-face teaching)", "≈100 h independent study", "25 h practicals/workshops + 25 h tutorials"]}, {"heading": "Prerequisites", "content": "No formal prerequisites; recommended background in Python programming and basic statistics."}, {"heading": "Delivery format", "list": ["Face-to-face lectures & open discussions", "Practical coding sessions in Jupyter notebooks via Blackboard", "Real-world dataset exercises"]}, {"heading": "Assessment", "list": ["Three interactive online assessments (via Jupyter notebooks), covering: 1. Exploratory data analysis; 2. Supervised machine learning; 3. Advanced topics (neural networks & ethics)"]}, {"heading": "Key learning outcomes", "list": ["Critically explain advanced machine learning methods and when to apply them", "Evaluate ethical implications of ML on biomedical datasets", "Build end-to-end Python data-analysis pipelines", "Perform EDA, clustering, and algorithm performance evaluation"]}]},
+      "IIDS67692": {"title": "IIDS67692 – Computational Methods for Multi-Modal Data Analysis", "sections": [{"heading": "Short description", "content": "Covers methods to integrate and analyse multi-modal health data (omics, imaging, clinical records) using machine-learning and statistical techniques, with with hands-on computational workflows."}, {"heading": "Credits & study load", "list": ["15 credits", "Semester 2 (6 weeks)", "≈115 h independent study", "17 h lectures + 18 h practicals/workshops"]}, {"heading": "Prerequisites", "content": "Recommended background in Python programming, statistics, and basic familiarity with omics or imaging data."}, {"heading": "Delivery format", "list": ["Blended learning: online lectures + F2F tutorials", "Formative group activities during workshops", "Jupyter-based programming exercises"]}, {"heading": "Assessment", "content": "Summative programming exercise (Jupyter notebook analysis + report): 100% (with written feedback within 15 days)"}, {"heading": "Key learning outcomes", "list": ["Describe multi-modal data types (bulk & single-cell omics, spatial omics, imaging, EHRs)", "Explain challenges in data integration and case-study applications", "Critically evaluate computational methods for multi-modal integration", "Develop ML/AI pipelines for omics and imaging integration", "Collaborate across computational and clinical teams"]}, {"heading": "Teaching staff", "content": "Juhi Gupta · Sokratia Georgaka"}]},
+      "IIDS68112": {"title": "IIDS68112 – Design and Analysis of Randomised Controlled Trials", "sections": [{"heading": "Short description", "content": "Introduces the statistical principles and methods for designing, conducting, and analysing randomised controlled trials (RCTs), including bias control, allocation methods, sample-size estimation, and intention-to-treat analysis using R."}, {"heading": "Credits & study load", "list": ["15 credits", "Semester 2 (11 weeks)", "≈1.25 h/week online lectures + exercises", "Group tutorials and review sessions", "One revision week"]}, {"heading": "Prerequisites", "content": "Basic statistical knowledge (e.g. from Semester 1 modules); familiarity with R is helpful."}, {"heading": "Delivery format", "list": ["Blended learning: online lecture materials + face-to-face review and tutorials", "Group exercises on RCT design & analysis", "R-based practical sessions"]}, {"heading": "Assessment", "list": ["Written exam (60%)", "Written assignment (essay on RCT design/critique; 40%)"]}, {"heading": "Key learning outcomes", "list": ["Select and apply appropriate statistical methods for various RCT designs", "Control and assess bias (blinding, allocation, intention-to-treat)", "Analyse RCT data in R, including baseline adjustment and handling protocol deviations", "Conduct meta-analysis of multiple RCTs"]}]}
+    };
+    let selected = [];
+    const maxSel = 4;
+
+    function updateCareerGuidance(guidance) {
+      const $panel = $('#career-guidance-panel').empty().hide();
+      if (!guidance || !guidance.skills || guidance.skills.length === 0) {
+        $panel.html('<p class="text-muted small">Select courses to see personalized career and research path suggestions here.</p>').fadeIn();
+        return;
+      }
+      let html = '<h6><i class="bi bi-compass"></i> Key Skill Areas:</h6><p>';
+      guidance.skills.forEach(skill => { html += `<span class="badge bg-primary me-1">${skill}</span>`; });
+      html += '</p><h6><i class="bi bi-briefcase"></i> Potential Paths:</h6><ul>';
+      guidance.paths.forEach(path => { html += `<li class="small">${path}</li>`; });
+      html += '</ul>';
+      $panel.html(html).fadeIn();
+    }
+
+    function renderRecommendations(recommendations) {
+        const $row = $('#recommend-cards').empty().hide();
+        if (!recommendations || recommendations.length === 0) {
+            $row.html('<p class="text-muted col-12">No more recommendations based on your current selection.</p>');
+        } else {
+            recommendations.forEach(r => {
+                const badge = newCourses.includes(r.code) ? '<span class="badge bg-warning text-dark ms-1">NEW*</span>' : '';
+                const cardHTML = `
+                <div class="col" data-code="${r.code}" data-title="${r.title}">
+                    <div class="card h-100 interactive">
+                        <div class="card-body">
+                            <h5 class="card-title">${r.code}${badge}</h5>
+                            <p class="card-text">${r.title}</p>
+                            <p>
+                                <span class="badge bg-info me-1">Pop ${r.support.toFixed(4)}</span>
+                                <span class="badge bg-success me-1">AR ${(r.ar_score||0).toFixed(4)}</span>
+                                <span class="badge bg-warning text-dark">CF ${(r.cf_score||0).toFixed(4)}</span>
+                            </p>
+                            <p class="fw-bold">Final ${(r.final_score||0).toFixed(4)}</p>
+                        </div>
+                    </div>
+                </div>`;
+                $(cardHTML).appendTo($row).css('opacity', 0).animate({opacity: 1}, 300);
+            });
+        }
+        $row.fadeIn(300);
+        AOS.refresh();
+    }
+
+    function fetchRecommendations(preferences = []) {
+      const isInitialFetch = selected.length === 0;
+      let payload = {
+          selected: selected,
+          num_rec: isInitialFetch ? 4 : (maxSel - selected.length) || 1,
+          mode: isInitialFetch ? 'support' : $('#mode-select').val(),
+      };
+      if (isInitialFetch && preferences.length > 0) {
+          payload.preferences = preferences;
+      }
+      
+      $.ajax({
+        url: '/recommend',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(payload)
+      }).done(resp => {
+        renderRecommendations(resp.recommendations);
+        updateCareerGuidance(resp.guidance);
+      });
+    }
+
+    function addToSelected(code, title) {
+      if (!code || selected.includes(code)) return;
+      if (selected.length >= maxSel) {
+          alert(`You can select a maximum of ${maxSel} courses.`);
+          return;
+      }
+      $('#selected-courses').find('.placeholder-text').remove();
+      selected.push(code);
+      const newItem = $(`
+        <li class="list-group-item d-flex justify-content-between align-items-center" data-code="${code}" style="opacity:0;">
+          <span class="me-2">${code} — ${title}</span>
+          <button class="btn-close" style="width: 8px; height: 8px;" aria-label="Remove"></button>
+        </li>
+      `);
+      $('#selected-courses').append(newItem);
+      newItem.animate({opacity: 1}, 300);
+      fetchRecommendations();
+    }
+    
+    function transitionToMainView() {
+        $('#welcome-panel').fadeOut(400, function() {
+            $('#recommender-content').fadeIn(400);
+            AOS.refresh();
+        });
+        if ($('#selected-courses').is(':empty')) {
+            $('#selected-courses').html('<p class="text-muted small mb-0 placeholder-text">Click on a recommended course or use the dropdown to add to your selection.</p>');
+        }
+    }
+
+    $(function(){
+      AOS.init({ duration: 600, once: true });
+      const courseModal = new bootstrap.Modal(document.getElementById('courseModal'));
+
+      $('#grading-table').DataTable({
+          paging: false,
+          info: false,
+          lengthChange: false,
+          searching: true,
+          ordering: true
+      });
+      
+      // --- Start of Chart.js modification ---
+
+      const yearCoursePercentages = {{ year_course_percentages_json|safe }};
+      const allChartCourses = {{ all_chart_courses_json|safe }};
+      const years = {{ years|tojson|safe }};
+      const yearCheckboxes = $('#year-checkboxes');
+      
+      // 1. Create a color map for fixed colors per year
+      const yearColorMap = {
+        '2022': 'rgba(255, 99, 132, 0.6)', // Red
+        '2023': 'rgba(54, 162, 235, 0.6)',  // Blue
+        '2024': 'rgba(111, 66, 193, 0.6)',  // Purple
+        // You can add more years and colors here
+      };
+
+      years.forEach((year, index) => {
+          yearCheckboxes.append(`
+            <div class="form-check form-check-inline">
+              <input class="form-check-input year-checkbox" type="checkbox" id="year-${year}" value="${year}" ${index === years.length - 1 ? 'checked' : ''}>
+              <label class="form-check-label" for="year-${year}">${year}</label>
+            </div>
+          `);
+      });
+
+      const ctx = document.getElementById('year-chart').getContext('2d');
+      let yearChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: allChartCourses, datasets: [] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { 
+            legend: { position: 'top' },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+                        if (label) {
+                            label += ': ';
+                        }
+                        if (context.parsed.y !== null) {
+                            label += context.parsed.y.toFixed(2) + '%';
+                        }
+                        return label;
+                    }
+                }
+            }
+          },
+          scales: { 
+            x: { stacked: false }, 
+            y: { 
+              stacked: false, 
+              beginAtZero: true,
+              max: 100,
+              title: { 
+                display: true, 
+                text: 'Enrollment Percentage (%)'
+              },
+              ticks: {
+                  callback: function(value, index, ticks) {
+                      return value + '%';
+                  }
+              }
+            } 
+          }
+        }
+      });
+
+      function updateYearChart() {
+          const selectedYears = $('.year-checkbox:checked').map(function() { return $(this).val(); }).get();
+          yearChart.data.datasets = selectedYears.map((year) => {
+              const dataForYear = allChartCourses.map(course => yearCoursePercentages[year][course] || 0);
+              // 2. Use the color map to get the color for the specific year
+              const color = yearColorMap[year] || 'rgba(201, 203, 207, 0.6)'; // Use grey as a fallback
+              return {
+                  label: year,
+                  data: dataForYear,
+                  backgroundColor: color,
+                  borderColor: color.replace('0.6', '1'),
+                  borderWidth: 1
+              };
+          });
+          yearChart.update();
+      }
+      
+      // --- End of Chart.js modification ---
+
+      $('.year-checkbox').on('change', updateYearChart);
+      updateYearChart(); 
+
+      $('#find-courses-btn').click(function() {
+        const preferences = $('#preference-options .preference-checkbox:checked').map(function() { return $(this).val(); }).get();
+        if (preferences.length === 0) {
+            alert("Please select at least one preference to get personalized suggestions.");
+            return;
+        }
+        fetchRecommendations(preferences);
+        transitionToMainView();
+      });
+
+      $('#show-popular-btn').click(function() {
+        fetchRecommendations([]);
+        transitionToMainView();
+      });
+      
+      $('#recommend-cards').on('click', '.col', function(){
+        addToSelected($(this).data('code'), $(this).data('title'));
+      });
+
+      $('#add-course-btn').click(() => {
+          const option = $('#course-dropdown option:selected');
+          if (option.val()) {
+              addToSelected(option.val(), option.text().split('—')[1].trim());
+          }
+      });
+
+      $('#selected-courses').on('click', '.btn-close', function(){
+        const li = $(this).closest('li');
+        const code = li.data('code');
+        selected = selected.filter(c => c !== code);
+        li.animate({opacity: 0}, 300, function() {
+            $(this).remove();
+            if (selected.length === 0) {
+                 $('#selected-courses').html('<p class="text-muted small mb-0 placeholder-text">Click on a recommended course or use the dropdown to add to your selection.</p>');
+            }
+        });
+        fetchRecommendations();
+      });
+
+      $('#reset-btn').click(() => { location.reload(); });
+
+      $('#mode-select').on('change', function() { if(selected.length > 0) fetchRecommendations(); });
+
+      $('body').on('click', '.course-link', function(){
+        const code = $(this).data('code');
+        const info = courseDetails[code];
+        if (!info) {
+            alert("Sorry, detailed information for this course is not available yet.");
+            return;
+        }
+        $('#courseModalLabel').text(info.title);
+        const $b = $('#courseModal .modal-body').empty();
+        info.sections.forEach(sec => {
+          $b.append(`<h6>${sec.heading}</h6>`);
+          if (sec.content) $b.append(`<p>${sec.content}</p>`);
+          if(sec.list) {
+            const $ul = $('<ul></ul>');
+            sec.list.forEach(i => $ul.append(`<li>${i}</li>`));
+            $b.append($ul);
+          }
+        });
+        courseModal.show();
+      });
+
+      $('a[data-bs-toggle="pill"]').on('shown.bs.tab', function (e) {
+        if (e.target.getAttribute('href') === '#stats-pane') {
+            yearChart.resize();
+        }
+        if (e.target.getAttribute('href') === '#catalog-pane') {
+            $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
+        }
+      });
+
+      $('#darkModeToggle').on('change', function() {
+          if ($(this).is(':checked')) {
+              $('html').attr('data-bs-theme', 'dark');
+          } else {
+              $('html').attr('data-bs-theme', 'light');
+          }
+      });
+    });
+</script>
+
+</body>
+</html>
