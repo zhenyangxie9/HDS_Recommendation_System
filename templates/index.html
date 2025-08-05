@@ -267,12 +267,14 @@
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-bold">Recommendation Strategy:</label>
-                    <select id="mode-select" class="form-select mb-3">
+                    <select id="mode-select" class="form-select mb-2">
                         <option value="hybrid" selected>Hybrid (Default)</option>
                         <option value="support">Popularity</option>
                         <option value="ar">Association Rules (AR)</option>
                         <option value="cf">Collaborative Filtering (CF)</option>
                     </select>
+                    <div id="mode-explanation" class="form-text text-muted mb-3" style="min-height: 60px;">
+                        </div>
                     <label class="form-label fw-bold">Add Course Manually:</label>
                     <div class="input-group">
                         <select id="course-dropdown" class="form-select">
@@ -472,19 +474,15 @@
           ordering: true
       });
       
-      // --- Start of Chart.js modification ---
-
       const yearCoursePercentages = {{ year_course_percentages_json|safe }};
       const allChartCourses = {{ all_chart_courses_json|safe }};
       const years = {{ years|tojson|safe }};
       const yearCheckboxes = $('#year-checkboxes');
       
-      // 1. Create a color map for fixed colors per year
       const yearColorMap = {
-        '2022': 'rgba(255, 99, 132, 0.6)', // Red
-        '2023': 'rgba(54, 162, 235, 0.6)',  // Blue
-        '2024': 'rgba(111, 66, 193, 0.6)',  // Purple
-        // You can add more years and colors here
+        '2022': 'rgba(255, 99, 132, 0.6)',
+        '2023': 'rgba(54, 162, 235, 0.6)',
+        '2024': 'rgba(111, 66, 193, 0.6)',
       };
 
       years.forEach((year, index) => {
@@ -544,8 +542,7 @@
           const selectedYears = $('.year-checkbox:checked').map(function() { return $(this).val(); }).get();
           yearChart.data.datasets = selectedYears.map((year) => {
               const dataForYear = allChartCourses.map(course => yearCoursePercentages[year][course] || 0);
-              // 2. Use the color map to get the color for the specific year
-              const color = yearColorMap[year] || 'rgba(201, 203, 207, 0.6)'; // Use grey as a fallback
+              const color = yearColorMap[year] || 'rgba(201, 203, 207, 0.6)';
               return {
                   label: year,
                   data: dataForYear,
@@ -557,8 +554,6 @@
           yearChart.update();
       }
       
-      // --- End of Chart.js modification ---
-
       $('.year-checkbox').on('change', updateYearChart);
       updateYearChart(); 
 
@@ -603,7 +598,28 @@
 
       $('#reset-btn').click(() => { location.reload(); });
 
-      $('#mode-select').on('change', function() { if(selected.length > 0) fetchRecommendations(); });
+      // --- NEW: Model Explanation Logic (in English) ---
+      const modeExplanations = {
+        'hybrid': '<strong>Hybrid (Default):</strong> An intelligent model that combines the strengths of all other models, using machine learning to rank the best course suggestions. Recommended for the most balanced and personalized results.',
+        'support': '<strong>Popularity:</strong> Recommends the most popular courses you haven’t selected, based on overall enrollment numbers. Ideal for discovering trending courses.',
+        'ar': '<strong>Association Rules (AR):</strong> Works on the principle of "students who took this course also often took...". It analyzes patterns to find courses that are frequently chosen together.',
+        'cf': '<strong>Collaborative Filtering (CF):</strong> Finds students with similar tastes to yours and recommends courses they liked. It suggests courses that your "academic soulmates" have taken but you haven’t.'
+      };
+
+      function updateModeExplanation() {
+        const selectedMode = $('#mode-select').val();
+        $('#mode-explanation').html(modeExplanations[selectedMode]);
+      }
+      
+      updateModeExplanation(); // Set initial explanation
+
+      $('#mode-select').on('change', function() {
+          updateModeExplanation();
+          if(selected.length > 0) {
+              fetchRecommendations();
+          }
+      });
+      // --- END NEW ---
 
       $('body').on('click', '.course-link', function(){
         const code = $(this).data('code');

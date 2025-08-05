@@ -13,7 +13,7 @@ import xgboost as xgb
 
 print("--- Starting Final Recommendation Model Training (Optimized Version) ---")
 
-# --- 0. 全局设定和目录创建 ---
+# --- 0. Global Settings and Directory Setup ---
 SEED = 42
 random.seed(SEED)
 np.random.seed(SEED)
@@ -26,13 +26,10 @@ if not os.path.exists('rules'):
 
 NEGATIVE_SAMPLING_RATIO = 1
 
-# --- 1. 数据加载和预处理 ---
+# --- 1. Data Loading and Preprocessing ---
 print("Step 1: Loading and preprocessing data...")
-# !!! 注意: Flask应用从 'data/HDS...' 加载，这里保持一致
 EXCEL_PATH = os.path.join("data", "HDS Optional Enrolments Anonymised.xlsx")
 df_all = pd.read_excel(EXCEL_PATH)
-
-# 数据清洗 (与我们最终版本一致)
 df_all = df_all[df_all['Course Code'].str.startswith('IIDS')].copy()
 df_all = df_all[df_all['Long Course Title'] != 'Multi-omics for Healthcare']
 for title, canonical in [('Decision Support Systems', None), ('Digital Transformation Project', 'IIDS61502')]:
@@ -45,36 +42,40 @@ df_all = df_all.drop_duplicates(subset=['Student ID Pseudonymised', 'Course Code
 all_courses = set(df_all['Course Code'].unique())
 course_support = (df_all['Course Code'].value_counts() / len(df_all['Student ID Pseudonymised'].unique())).to_dict()
 
-# --- 2. 生成并保存关联规则 ---
+# --- 2. Generating and Saving Association Rules ---
 print("\nStep 2: Generating and saving association rules...")
 best_params = {'support': 0.03, 'confidence': 0.3}
 student_baskets = df_all.groupby('Student ID Pseudonymised')['Course Code'].apply(list).tolist()
+
 df_transactions = pd.get_dummies(pd.Series(student_baskets).explode()).groupby(level=0).max()
 
 frequent_itemsets_final = apriori(df_transactions, min_support=best_params['support'], use_colnames=True)
 rules_df_final = association_rules(frequent_itemsets_final, metric="confidence", min_threshold=best_params['confidence'])
+
 rules_df_final['antecedents'] = rules_df_final['antecedents'].apply(set)
 rules_df_final['consequents'] = rules_df_final['consequents'].apply(set)
 
-# 保存规则, Flask app会使用这个文件
+# Save the generated rules. The Flask app will use this file.
 RULES_SAVE_PATH = os.path.join("rules", "optimized_rules.pkl")
 with open(RULES_SAVE_PATH, "wb") as f:
     pickle.dump(rules_df_final, f)
 print(f"Optimized association rules saved to: {RULES_SAVE_PATH}")
 
 
-# --- 3. 构建协同过滤模型组件 ---
+# --- 3. Building Collaborative Filtering Model Components ---
 print("\nStep 3: Building collaborative filtering model components...")
 df_ui = df_all.assign(Enrolled=1).pivot_table(index='Student ID Pseudonymised', columns='Course Code', values='Enrolled', fill_value=0)
 S_cf = cosine_similarity(df_ui.values.T)
 idx_map = {c: i for i, c in enumerate(df_ui.columns)}
-# (这些组件将在 get_features 中使用，无需单独保存)
 
 
-# --- 4. 特征工程 & 为XGBRanker生成训练数据 ---
+# --- 4. Feature Engineering & Training Data Generation for XGBRanker ---
 print("\nStep 4: Generating training data for the ranking model...")
 def get_features(input_set, candidate_course):
-    """ 使用我们最终优化的特征集 """
+    """
+    Generates a feature vector for a given user's course set and a candidate course.
+    This uses our final, optimized feature set.
+    """
     cf_scores = [S_cf[idx_map[s], idx_map[candidate_course]] for s in input_set if s in idx_map]
     cf_score_sum = np.sum(cf_scores) if cf_scores else 0
     cf_score_avg = np.mean(cf_scores) if cf_scores else 0
@@ -95,15 +96,18 @@ evaluation_set = {sid: courses for sid, courses in student_courses.items() if le
 
 for sid, courses in tqdm(evaluation_set.items(), desc="Generating training samples for XGBRanker"):
     random.shuffle(courses)
+    # Split the courses into a context (input) set and a ground-truth (test) set.
     num_input_courses = random.randint(2, len(courses) - 1)
     input_set = courses[:num_input_courses]
     test_set = set(courses[num_input_courses:])
     if not test_set: continue
 
     current_user_samples = []
+    # Positive samples: courses the student actually took.
     for course in test_set:
         current_user_samples.append((get_features(input_set, course), 1))
         
+    # Negative samples: courses the student did not take.
     num_neg_samples = len(test_set) * NEGATIVE_SAMPLING_RATIO
     user_courses = set(courses)
     negative_pool = list(all_courses - user_courses)
@@ -111,6 +115,7 @@ for sid, courses in tqdm(evaluation_set.items(), desc="Generating training sampl
     for course in neg_samples:
         current_user_samples.append((get_features(input_set, course), 0))
     
+    # Add the generated samples to our training data.
     if current_user_samples:
         features, labels = zip(*current_user_samples)
         X_train.extend(features)
@@ -123,7 +128,7 @@ y_train_np = np.array(y_train)
 groups_for_cv_np = np.array(groups_for_cv)
 
 
-# --- 5. 手动进行超参数搜索并训练最终模型 ---
+# --- 5. Hyperparameter Tuning and Final Model Training ---
 print("\nStep 5: Manually searching for best XGBRanker parameters...")
 
 param_grid = {
@@ -160,12 +165,11 @@ _, group_sizes_full = np.unique(groups_for_cv_np, return_counts=True)
 ltr_model = xgb.XGBRanker(**best_params, random_state=SEED)
 ltr_model.fit(X_train_np, y_train_np, group=group_sizes_full)
 
-# --- 6. 保存最终的 XGBRanker 模型 ---
-# 注意：我们不再需要 StandardScaler，因为XGBoost树模型对特征缩放不敏感
+# --- 6. Save the Final XGBRanker Model ---
 MODEL_SAVE_PATH = os.path.join("models", "ltr_model.pkl")
 with open(MODEL_SAVE_PATH, 'wb') as f:
     pickle.dump(ltr_model, f)
 print(f"XGBoost Ranker model saved to: {MODEL_SAVE_PATH}")
-# (旧的 scaler.pkl 文件可以删除了，因为它不再被需要)
+
 
 print("\n--- Model training complete! You can now run app.py. ---")
