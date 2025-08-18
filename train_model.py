@@ -24,7 +24,7 @@ if not os.path.exists('models'):
 if not os.path.exists('rules'):
     os.makedirs('rules')
 
-NEGATIVE_SAMPLING_RATIO = 1
+NEGATIVE_SAMPLING_RATIO = 5
 
 # --- 1. Data Loading and Preprocessing ---
 print("Step 1: Loading and preprocessing data...")
